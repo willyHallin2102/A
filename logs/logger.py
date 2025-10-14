@@ -25,23 +25,23 @@ from enum import Enum
 
 class LogLevel(Enum):
     """
-        Defines standard log levels for use throughout the system, provides
-        multiple layers for various amount of feedback, including following,
-        Levels (in increasing order of severity):
-        - DEBUG   : Detailed diagnostic information.
-        - INFO    : General operational messages.
-        - WARNING : Indicates potential issues or unexpected 
-                    behaviour.
-        - ERROR   : Serious problem preventing part of the 
-                    system from functioning.
-        - CRITICAL: Severe error that may cause a full system 
-                    failure.
-        -------------------------------------------
-        Example:
-            >>> Logger.get_logger("app").log(
-                    LogLevel.INFO, "Application started"
-                )
-        Uses `import logging` to provide the loggings.
+    Defines standard log levels for use throughout the system, provides
+    multiple layers for various amount of feedback, including following,
+    Levels (in increasing order of severity):
+    - DEBUG   : Detailed diagnostic information.
+    - INFO    : General operational messages.
+    - WARNING : Indicates potential issues or unexpected 
+                behaviour.
+    - ERROR   : Serious problem preventing part of the 
+                system from functioning.
+    - CRITICAL: Severe error that may cause a full system 
+                failure.
+    -------------------------------------------
+    Example:
+        >>> Logger.get_logger("app").log(
+                LogLevel.INFO, "Application started"
+            )
+    Uses `import logging` to provide the loggings.
     """
     DEBUG       : int=logging.DEBUG
     INFO        : int=logging.INFO
@@ -54,8 +54,8 @@ class LogLevel(Enum):
 
 class JsonFormatter(logging.Formatter):
     """
-        Json formatter implementation, manages and define the layout for how the
-        json logs are formatted when being stored.
+    Json formatter implementation, manages and define the layout for how the
+    json logs are formatted when being stored.
     """
     pid = os.getpid()
 
@@ -119,20 +119,20 @@ class ConsoleFormatter(logging.Formatter):
 
 class Logger:
     """
-        Logger instance with asynchronous capability, supporting JSON 
-        formatting, and console formatting outputs.
+    Logger instance with asynchronous capability, supporting JSON 
+    formatting, and console formatting outputs.
 
-        Logs are handled through a shared `QueueListener` and 
-        `QueueHandler` pair to minimize I/O contention in `threading`
-        multi-threading environments.
+    Logs are handled through a shared `QueueListener` and 
+    `QueueHandler` pair to minimize I/O contention in `threading`
+    multi-threading environments.
 
-        Features:
-        ---------
-            - Rotating file logs (configurable maxsize + backup count)
-            - JSON log output (structured logging --disk)
-            - Colorized console logging (During Runtime --no storing)
-            - Context manager for timing code blocks to support measuring 
-              the time complexity for various methods/functions.
+    Features:
+    ---------
+        - Rotating file logs (configurable maxsize + backup count)
+        - JSON log output (structured logging --disk)
+        - Colorized console logging (During Runtime --no storing)
+        - Context manager for timing code blocks to support measuring 
+            the time complexity for various methods/functions.
     """
     _instances: Dict[str, "Logger"] = {}
     _instances_lock = Lock()
@@ -229,13 +229,13 @@ class Logger:
 
     def log(self, level: Union[int, LogLevel], msg: str, **extra: Any):
         """
-            Log a message with a specified severity level.
+        Log a message with a specified severity level.
 
-            Args:
-                level:  Logging level or LogLevel enum.
-                msg:    Log message
-                **extra:    Arbitrary key-value pairs include in
-                            JSON logs.
+        Args:
+            level:  Logging level or LogLevel enum.
+            msg:    Log message
+            **extra:    Arbitrary key-value pairs include in
+                        JSON logs.
         """
         lvl = level.value if isinstance(level, LogLevel) else level
         self.logger.log(lvl, msg, extra=extra)
@@ -253,22 +253,22 @@ class Logger:
     @contextmanager
     def time_block(self, label="Execution time", level=LogLevel.INFO, **extra):
         """
-            Context manager to measure the execution time of a code block. 
-            A flexible timer for test and log performance of snippets, in 
-            particular methods/functions.
+        Context manager to measure the execution time of a code block. 
+        A flexible timer for test and log performance of snippets, in 
+        particular methods/functions.
 
-            Args:
-                label:  Descriptive name for the timing log.
-                level:  Logging level used to emit the timing result.
-                **extra:    Additional context to include in the log
-                            entry.
-            --------
-            Example:
-                >>> with logger.time_block("Time Took")
-                        func1()
-                        func2()
-            This block will time and perform `func1` and `func2` and log 
-            the time took to compute the block. \\
+        Args:
+            label:  Descriptive name for the timing log.
+            level:  Logging level used to emit the timing result.
+            **extra:    Additional context to include in the log
+                        entry.
+        --------
+        Example:
+            >>> with logger.time_block("Time Took")
+                    func1()
+                    func2()
+        This block will time and perform `func1` and `func2` and log 
+        the time took to compute the block. \\
         """
         start = time.perf_counter()
         try: yield
@@ -282,19 +282,19 @@ class Logger:
     @classmethod
     def get_logger(cls, name: str, **kwargs) -> "Logger":
         """
-            Get or create a named logger instance.
+        Get or create a named logger instance.
 
-            Ensures a singleton logger per unique name, sharing
-            a background `QueueListener` for asynchronous logging.
+        Ensures a singleton logger per unique name, sharing
+        a background `QueueListener` for asynchronous logging.
 
-            Args:
-                name:   Identifier for the logger.
-                **kwargs:   Optional override for logger configuration.
-            -----
-            
-            Returns:
-                Configured logger instance.
-            --------
+        Args:
+            name:   Identifier for the logger.
+            **kwargs:   Optional override for logger configuration.
+        -----
+        
+        Returns:
+            Configured logger instance.
+        --------
         """
         with cls._instances_lock:
             if name not in cls._instances:
@@ -304,10 +304,10 @@ class Logger:
     @classmethod
     def shutdown_all(cls):
         """
-            Gracefully stops all active loggers and close the 
-            current active file-handlers. Stops the shared 
-            `QueueListener`, closes all handlers, and clears 
-            the internal logger registry.
+        Gracefully stops all active loggers and close the 
+        current active file-handlers. Stops the shared 
+        `QueueListener`, closes all handlers, and clears 
+        the internal logger registry.
         """
         if cls._queue_listener: cls._queue_listener.stop()
         
