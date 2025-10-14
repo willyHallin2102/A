@@ -9,7 +9,7 @@ import logging
 from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
 
 import os, sys, time
-import json, uuid
+import orjson, uuid
 
 from pathlib import Path
 from datetime import datetime
@@ -28,7 +28,6 @@ class LogLevel(Enum):
         Defines standard log levels for use throughout the system, provides
         multiple layers for various amount of feedback, including following,
         Levels (in increasing order of severity):
-        ------------------------------------------
         - DEBUG   : Detailed diagnostic information.
         - INFO    : General operational messages.
         - WARNING : Indicates potential issues or unexpected 
@@ -120,7 +119,20 @@ class ConsoleFormatter(logging.Formatter):
 
 class Logger:
     """
+        Logger instance with asynchronous capability, supporting JSON 
+        formatting, and console formatting outputs.
 
+        Logs are handled through a shared `QueueListener` and 
+        `QueueHandler` pair to minimize I/O contention in `threading`
+        multi-threading environments.
+
+        Features:
+        ---------
+            - Rotating file logs (configurable maxsize + backup count)
+            - JSON log output (structured logging --disk)
+            - Colorized console logging (During Runtime --no storing)
+            - Context manager for timing code blocks to support measuring 
+              the time complexity for various methods/functions.
     """
     _instances: Dict[str, "Logger"] = {}
     _instances_lock = Lock()
@@ -129,16 +141,20 @@ class Logger:
     _shared_handlers = []
     _log_filepath: Optional[Path] = None
 
-    def __init__(
+    def __init__(self,
         name: str, level: Union[int, LogLevel]=LogLevel.INFO,
         json_format: bool=True, use_console: bool=True, 
         max_bytes: int=1024, # bytes
         backup_count: int=5
     ):
-        """ Initialize Logger Instance """
+        """ --------------------------
+            Initialize Logger Instance
+        """
+        # Constructing the directory, sign up the archives for logs as root
         self.directory = Path(__file__).parent / "logs"
         self.directory.mkdir(parents=True, exist_ok=True)
 
+        # Parameters for the logger being defined
         self.name = name
         self.level = level.value if isinstance(level, LogLevel) else int(level)
         self.json_format, self.use_console = json_format, use_console
@@ -148,14 +164,19 @@ class Logger:
         self.logger.setLevel(self.level)
         self.logger.propagate = False
 
+        # Handlers for the logger, such as sharing queue (logger).
         self._setup_handlers()
     
 
     def __repr__(self): return f"<Logger name={self.name} level={self.level}>"
 
+
     # --------------- Setup --------------- #
 
     def _setup_handlers(self):
+        """
+
+        """
         # Remove old handlers ... duplicates otherwise
         for handler in list(self.logger.handlers):
             self.logger.removeHandler(handler)
@@ -207,6 +228,15 @@ class Logger:
     # -------------------- Logging API -------------------- #
 
     def log(self, level: Union[int, LogLevel], msg: str, **extra: Any):
+        """
+            Log a message with a specified severity level.
+
+            Args:
+                level:  Logging level or LogLevel enum.
+                msg:    Log message
+                **extra:    Arbitrary key-value pairs include in
+                            JSON logs.
+        """
         lvl = level.value if isinstance(level, LogLevel) else level
         self.logger.log(lvl, msg, extra=extra)
 
@@ -222,6 +252,24 @@ class Logger:
 
     @contextmanager
     def time_block(self, label="Execution time", level=LogLevel.INFO, **extra):
+        """
+            Context manager to measure the execution time of a code block. 
+            A flexible timer for test and log performance of snippets, in 
+            particular methods/functions.
+
+            Args:
+                label:  Descriptive name for the timing log.
+                level:  Logging level used to emit the timing result.
+                **extra:    Additional context to include in the log
+                            entry.
+            --------
+            Example:
+                >>> with logger.time_block("Time Took")
+                        func1()
+                        func2()
+            This block will time and perform `func1` and `func2` and log 
+            the time took to compute the block. \\
+        """
         start = time.perf_counter()
         try: yield
         finally:
@@ -233,6 +281,21 @@ class Logger:
 
     @classmethod
     def get_logger(cls, name: str, **kwargs) -> "Logger":
+        """
+            Get or create a named logger instance.
+
+            Ensures a singleton logger per unique name, sharing
+            a background `QueueListener` for asynchronous logging.
+
+            Args:
+                name:   Identifier for the logger.
+                **kwargs:   Optional override for logger configuration.
+            -----
+            
+            Returns:
+                Configured logger instance.
+            --------
+        """
         with cls._instances_lock:
             if name not in cls._instances:
                 cls._instances[name] = Logger(name, **kwargs)
@@ -240,6 +303,12 @@ class Logger:
 
     @classmethod
     def shutdown_all(cls):
+        """
+            Gracefully stops all active loggers and close the 
+            current active file-handlers. Stops the shared 
+            `QueueListener`, closes all handlers, and clears 
+            the internal logger registry.
+        """
         if cls._queue_listener: cls._queue_listener.stop()
         
         for handler in list(cls._shared_handlers):
