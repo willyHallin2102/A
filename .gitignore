@@ -1,0 +1,24 @@
+# Helper for avoid uploading larger dataset to github
+
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+
+# Does not include data (too large) -- need upload elsewhere
+data/base/
+
+# IDE/project files
+.vscode/
+.env
+*.log
+
+# Data/model files
+*.csv
+*.pkl
+*.h5
+*.npy
