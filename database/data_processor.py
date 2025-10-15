@@ -6,7 +6,7 @@ import orjson
 import numpy as np
 import pandas as pd
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from logs.logger import Logger, LogLevel
 

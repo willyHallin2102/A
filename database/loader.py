@@ -13,7 +13,7 @@ from typing import Dict, Final, List, Optional, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 from logs.logger import Logger, LogLevel
-from database.file_handlers import HandlerFactory, BaseFileHandler
+from database.file_handler import HandlerFactory, BaseFileHandler
 from database.data_processor import DataProcessor
 
 
@@ -35,7 +35,7 @@ class DataLoader:
         'los_ang', 'los_dly', 'nlos_pl', 'nlos_ang', 'nlos_dly'
     ]
 
-    def __init__(
+    def __init__(self,
         n_workers: Optional[int]=None, chunk_size: int=10_000,
         level: LogLevel=LogLevel.INFO, use_console: bool=True
     ):
