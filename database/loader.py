@@ -41,7 +41,7 @@ class DataLoader:
     ):
         """ Initialize Data-Loader Instance """
         # Creates root directory for the data-loader
-        self.directory = Path(__file__).parent / ""
+        self.directory = Path(__file__).parent / "storage"
         self.directory.mkdir(parents=True, exist_ok=True)
 
         self.n_workers = n_workers or mp.cpu_count()

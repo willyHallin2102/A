@@ -10,7 +10,7 @@ __pycache__/
 venv/
 
 # Does not include data (too large) -- need upload elsewhere
-data/base/
+database/storage
 
 # IDE/project files
 .vscode/
