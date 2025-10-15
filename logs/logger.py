@@ -240,11 +240,11 @@ class Logger:
         lvl = level.value if isinstance(level, LogLevel) else level
         self.logger.log(lvl, msg, extra=extra)
 
-    def debug(self, msg: str, **extra): self.log(LogLevel.DEBUG, msg, **extra)
-    def info(self, msg: str, **extra): self.log(LogLevel.INFO, msg, **extra)
-    def warning(self, msg: str, **extra): self.log(LogLevel.WARNING, msg, **extra)
-    def error(self, msg: str, **extra): self.log(LogLevel.ERROR, msg, **extra)
-    def critical(self, msg: str, **extra): self.log(LogLevel.CRITICAL, msg, **extra)
+    def debug(self, msg: str, **extra):     self.log(LogLevel.DEBUG, msg, **extra)
+    def info(self, msg: str, **extra):      self.log(LogLevel.INFO, msg, **extra)
+    def warning(self, msg: str, **extra):   self.log(LogLevel.WARNING, msg, **extra)
+    def error(self, msg: str, **extra):     self.log(LogLevel.ERROR, msg, **extra)
+    def critical(self, msg: str, **extra):  self.log(LogLevel.CRITICAL, msg, **extra)
     def exception(self, msg: str, **extra): self.logger.exception(msg, extra=extra)
 
 

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 import os, sys
 
 import numpy as np
