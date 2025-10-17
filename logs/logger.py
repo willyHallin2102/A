@@ -144,7 +144,7 @@ class Logger:
     def __init__(self,
         name: str, level: Union[int, LogLevel]=LogLevel.INFO,
         json_format: bool=True, use_console: bool=True, 
-        max_bytes: int=1024, # bytes
+        to_disk: bool=True, max_bytes: int=1024, # bytes
         backup_count: int=5
     ):
         """ --------------------------
@@ -157,6 +157,7 @@ class Logger:
         # Parameters for the logger being defined
         self.name = name
         self.level = level.value if isinstance(level, LogLevel) else int(level)
+        self.to_disk = to_disk
         self.json_format, self.use_console = json_format, use_console
         self.max_bytes, self.backup_count = max_bytes, backup_count
         
@@ -193,25 +194,28 @@ class Logger:
         if not Logger._queue_listener:
             Logger._init_shared_handlers(self)
     
-    
+
     @classmethod
     def _init_shared_handlers(cls, instance: "Logger"):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         identifier = uuid.uuid4().hex[:8]
 
-        filepath = instance.directory / f"logger-{timestamp}-{identifier}.log"
-        cls._log_filepath = filepath
+        # Only create file handler if disk logging is enabled
+        if instance.to_disk:
+            filepath = instance.directory / f"logger-{timestamp}-{identifier}.log"
+            cls._log_filepath = filepath
 
-        file_handler = RotatingFileHandler(
-            filepath, maxBytes=instance.max_bytes,
-            backupCount=instance.backup_count, encoding="utf-8"
-        )
-        file_handler.setFormatter(
-            JsonFormatter() if instance.json_format else logging.Formatter()
-        )
-        file_handler.setLevel(logging.NOTSET)
-        cls._shared_handlers.append(file_handler)
+            file_handler = RotatingFileHandler(
+                filepath, maxBytes=instance.max_bytes,
+                backupCount=instance.backup_count, encoding="utf-8"
+            )
+            file_handler.setFormatter(
+                JsonFormatter() if instance.json_format else logging.Formatter()
+            )
+            file_handler.setLevel(logging.NOTSET)
+            cls._shared_handlers.append(file_handler)
 
+        # Console logging
         if instance.use_console:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setFormatter(ConsoleFormatter())
@@ -221,8 +225,8 @@ class Logger:
         cls._queue_listener = QueueListener(
             cls._shared_queue, *cls._shared_handlers, respect_handler_level=True
         )
-
         cls._queue_listener.start()
+
 
 
     # -------------------- Logging API -------------------- #
@@ -252,29 +256,14 @@ class Logger:
 
     @contextmanager
     def time_block(self, label="Execution time", level=LogLevel.INFO, **extra):
-        """
-        Context manager to measure the execution time of a code block. 
-        A flexible timer for test and log performance of snippets, in 
-        particular methods/functions.
-
-        Args:
-            label:  Descriptive name for the timing log.
-            level:  Logging level used to emit the timing result.
-            **extra:    Additional context to include in the log
-                        entry.
-        --------
-        Example:
-            >>> with logger.time_block("Time Took")
-                    func1()
-                    func2()
-        This block will time and perform `func1` and `func2` and log 
-        the time took to compute the block. \\
-        """
         start = time.perf_counter()
         try: yield
         finally:
             elapsed = time.perf_counter() - start
-            self.log(level, f"{label}: {elapsed:.6f}s", **extra)
+            msg = f"{label}: {elapsed:.6f}s"
+            if self.use_console:
+                print(msg)
+            self.log(level, msg, **extra)
 
 
     # ---------------------- Class API ---------------------- #

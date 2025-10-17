@@ -1,6 +1,6 @@
 #!/usr/venv python3.10
 """
-    database/loader.py
+    debug/loader.py
     ------------------
     Command-line interface for testing and debugging the `DataLoader`
     system. Includes timing different methods, loading UAV trajectory

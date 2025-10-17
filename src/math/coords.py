@@ -80,7 +80,7 @@ def cartesian_to_spherical(dvec: ArrayLike) -> Tuple[ArrayF, ArrayF, ArrayF]:
 
     # Radius extraction and tolerance epsilon matching the dtype
     radius = np.linalg.norm(array, axis=1)
-    radius = np.clip(radius, self._eps_for_dtype(radius), None)
+    radius = np.clip(radius, _eps_for_dtype(radius), None)
 
     # `phi` and `theta` measured in degrees
     phi = np.degrees(np.arctan2(y, x))
