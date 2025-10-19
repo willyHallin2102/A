@@ -12,6 +12,7 @@ venv/
 # Does not include data (too large) -- need upload elsewhere
 database/storage
 logs/logs
+src/models/store
 
 # IDE/project files
 .vscode/
