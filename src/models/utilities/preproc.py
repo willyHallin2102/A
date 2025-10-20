@@ -37,15 +37,15 @@ def _(proc: StandardScaler) -> Dict[str, Any]:
 @preproc_to_param.register
 def _(proc: OneHotEncoder) -> Dict[str, Any]:
     params: Dict[str, Any] = {
-        "categories": [cat.tolist() for cat in proc.categories_],
+        "categories": [category.tolist() for category in proc.categories_],
         "handle_unknown": proc.handle_unknown,
         "drop": proc.drop,
         "sparse_output": getattr(proc, "sparse_output", False),
     }
     # Add optional attributes if present
-    for attr in ("min_frequency", "max_categories"):
-        if hasattr(proc, attr):
-            params[attr] = getattr(proc, attr)
+    for attribute in ("min_frequency", "max_categories"):
+        if hasattr(proc, attribute):
+            params[attribute] = getattr(proc, attribute)
     return params
 
 
@@ -84,7 +84,7 @@ def _(cls: type(StandardScaler), param: Dict[str, Any]) -> StandardScaler:
 @param_to_preproc.register
 def _(cls: type(OneHotEncoder), param: Dict[str, Any]) -> OneHotEncoder:
     proc = OneHotEncoder(
-        categories=[np.array(c) for c in param["categories"]],
+        categories=[np.array(category) for category in param["categories"]],
         handle_unknown=param.get("handle_unknown", "ignore"),
         drop=param.get("drop"),
         sparse_output=param.get("sparse_output", False),
@@ -92,7 +92,7 @@ def _(cls: type(OneHotEncoder), param: Dict[str, Any]) -> OneHotEncoder:
         max_categories=param.get("max_categories"),
     )
     # Pretend fitted
-    proc.categories_ = [np.array(c) for c in param["categories"]]
+    proc.categories_ = [np.array(category) for category in param["categories"]]
     proc.n_features_in_ = len(proc.categories_)
     return proc
 
