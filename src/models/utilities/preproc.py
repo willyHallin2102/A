@@ -11,21 +11,36 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder, MinMaxScaler
 
 import numpy as np
 
-# ---------- Type Alias ---------- #
+# ---------------========== Type Alias ==========--------------- #
 
 Preproc = Union[StandardScaler, OneHotEncoder, MinMaxScaler]
 
 
-# ---------- Serialize ---------- #
+# ---------------========== Serialization ==========--------------- #
 
 @singledispatch
 def preproc_to_param(proc: Any) -> Dict[str, Any]:
-    """Serialize sklearn preprocessing object into a JSON/pickle-safe dict."""
+    """
+    Serialize a fitted scikit-learn preprocessing object into a JSON/pickle dict.
+
+    Parameters
+    ----------
+    proc:   A fitted preprocessing instance (e.g. `StandardScaler`, `OneHotEncoder`).
+
+    Returns
+    -------
+        A dictionary representation of the fitted parameters.
+
+    Raises
+    ------
+    TypeError:  If the provided object type is unsupported.
+    """
     raise TypeError(f"Unsupported preprocessing type: {type(proc).__name__}")
 
 
 @preproc_to_param.register
 def _(proc: StandardScaler) -> Dict[str, Any]:
+    """ Serialize a fitter `StandardScaler` into a dictionary. """
     return {
         "mean": proc.mean_.tolist(),
         "scale": proc.scale_.tolist(),
@@ -36,6 +51,7 @@ def _(proc: StandardScaler) -> Dict[str, Any]:
 
 @preproc_to_param.register
 def _(proc: OneHotEncoder) -> Dict[str, Any]:
+    """ Serialize a fitted `OneHotEncoder` into a dictionary. """
     params: Dict[str, Any] = {
         "categories": [category.tolist() for category in proc.categories_],
         "handle_unknown": proc.handle_unknown,
@@ -51,6 +67,7 @@ def _(proc: OneHotEncoder) -> Dict[str, Any]:
 
 @preproc_to_param.register
 def _(proc: MinMaxScaler) -> Dict[str, Any]:
+    """ Serialize a fitted `MinMaxScaler` into a dictionary. """
     return {
         "data_min": proc.data_min_.tolist(),
         "data_max": proc.data_max_.tolist(),
@@ -60,18 +77,33 @@ def _(proc: MinMaxScaler) -> Dict[str, Any]:
         "feature_range": getattr(proc, "feature_range", (0, 1)),
     }
 
-
-# ---------- Deserialize ---------- #
+# ---------------========== Deserialization ==========--------------- #
 # Note: `singledispatch` works on the first argument, so we dispatch on class.
 
 @singledispatch
 def param_to_preproc(cls: Any, param: Dict[str, Any]) -> Preproc:
-    """Deserialize JSON-safe dict back into sklearn preprocessor."""
+    """
+    Deserialize a JSON-safe dictionary back into a fitted preprocessing object.
+
+    Args:
+    -----
+    cls:    The class of the preprocessing object (e.g. `StandardScaler`).
+    param:  The serialized parameter dictionary.
+
+    Returns
+    -------
+        A reconstructed, "fitted" preprocessing instance.
+
+    Raises
+    ------
+    TypeError:  If the class type is unsupported.
+    """
     raise TypeError(f"Unsupported preprocessor class: {cls.__name__}")
 
 
 @param_to_preproc.register
 def _(cls: type(StandardScaler), param: Dict[str, Any]) -> StandardScaler:
+    """ Serialize a fitted `StandardScaler` into a dictionary. """
     proc = StandardScaler()
     proc.mean_ = np.array(param["mean"])
     proc.scale_ = np.array(param["scale"])
@@ -83,6 +115,7 @@ def _(cls: type(StandardScaler), param: Dict[str, Any]) -> StandardScaler:
 
 @param_to_preproc.register
 def _(cls: type(OneHotEncoder), param: Dict[str, Any]) -> OneHotEncoder:
+    """ Serialize a fitted `OneHotEncoder` into a dictionary. """
     proc = OneHotEncoder(
         categories=[np.array(category) for category in param["categories"]],
         handle_unknown=param.get("handle_unknown", "ignore"),
@@ -99,6 +132,7 @@ def _(cls: type(OneHotEncoder), param: Dict[str, Any]) -> OneHotEncoder:
 
 @param_to_preproc.register
 def _(cls: type(MinMaxScaler), param: Dict[str, Any]) -> MinMaxScaler:
+    """ Serialize a fitted `MinMaxScaler` into a dictionary. """
     proc = MinMaxScaler(feature_range=param.get("feature_range", (0, 1)))
     proc.data_min_ = np.array(param["data_min"])
     proc.data_max_ = np.array(param["data_max"])
@@ -112,7 +146,20 @@ def _(cls: type(MinMaxScaler), param: Dict[str, Any]) -> MinMaxScaler:
 # ---------- Public API ---------- #
 
 def serialize_preproc(proc: Preproc) -> Dict[str, Any]:
-    """Public API: serialize a preprocessor to a dict."""
+    """
+    Serializing a fitted preprocessor to a dictionary.
+
+    Args:
+    -----
+    proc:   Fitted preprocessing object (`StandardScaler`, 
+            `OneHotEncoder`, or `MinMaxScaler`).
+
+    Returns:
+    --------
+        A dictionary with keys:
+            - "type": name of the preprocessor class
+            - "params": serialized fitted parameters
+    """
     return {
         "type": type(proc).__name__,
         "params": preproc_to_param(proc),
@@ -120,7 +167,21 @@ def serialize_preproc(proc: Preproc) -> Dict[str, Any]:
 
 
 def deserialize_preproc(data: Dict[str, Any]) -> Preproc:
-    """Public API: reconstruct a preprocessor from serialized dict."""
+    """
+    Reconstructing a preprocessor from its serialized dictionary form.
+
+    Args:
+    -----
+    data:   Dictionary containing the preprocessor metadata and parameters.
+    Returns:
+    -------
+        Reconstructed fitted preprocessing object.
+
+    Raises:
+    ------
+    ValueError: If the `type` key does not correspond to a supported 
+                preprocessor.
+    """
     cls_map = {
         "StandardScaler": StandardScaler,
         "OneHotEncoder": OneHotEncoder,
