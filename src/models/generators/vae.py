@@ -115,7 +115,7 @@ class Vae(tfk.Model):
         # Setting up the logger
         self.loglevel = level
         self.logger = Logger(
-            "Vae", to_disk=to_disk, use_console=True, json_format=True,
+            "vae", to_disk=to_disk, use_console=True, json_format=True,
             level=self.loglevel
         )
 
