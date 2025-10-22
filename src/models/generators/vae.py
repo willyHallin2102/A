@@ -143,15 +143,9 @@ class Vae(tfk.Model):
         self.logger.debug("Building encoder and decoder networks...")
         self.sampler = Reparametrize()
 
-        self.encoder = self._build_encoder(
-            self.encoder_layers, self.init_kernel, 
-            self.init_bias, self.dropout_rate
-        )
-        
-        self.decoder = self._build_decoder(
-            self.decoder_layers, self.init_kernel, self.init_bias,
-            self.dropout_rate, self.n_sort
-        )
+        self.encoder = self._build_encoder()
+        self.decoder = self._build_decoder()
+
         self._initialize_metrics()
 
         self.logger.info("Model initialization completed")
@@ -312,7 +306,7 @@ class Vae(tfk.Model):
         """
         self.logger.debug(f"Building encoder with layers={self.encoder_layers}")
         x_in = tfkl.Input(shape=(self.n_data,), name="enc-x")
-        conditions_in = tfkl.Input(shape=(n_conditions,), name="x-conditions")
+        conditions_in = tfkl.Input(shape=(self.n_conditions,), name="x-conditions")
         h = tfkl.Concatenate(name="enc-concatenate")([x_in, conditions_in])
 
         names: List[str] = []
@@ -322,7 +316,7 @@ class Vae(tfk.Model):
             h = tfkl.Dense(units, activation="swish", name=name)(h)
             h = tfkl.BatchNormalization(name=f"{name}-batch")(h)
             if self.dropout_rate > 0.0:
-                h = tfkl.Dropout(self.dropout_rate, name=f"{name}-{drop}")(h)
+                h = tfkl.Dropout(self.dropout_rate, name=f"{name}-drop")(h)
         
         z_mu = tfkl.Dense(self.n_latent, name="enc-mu")(h)
         z_logvar = tfkl.Dense(self.n_latent, name="enc-logvar")(h)
@@ -340,9 +334,9 @@ class Vae(tfk.Model):
         """
         """
         self.logger.debug(f"Building encoder with layers = '{self.decoder_layers}'")
-        x_in = tfkl.Input(shape=(self.n_data,), name="dec-x")
+        z_in = tfkl.Input(shape=(self.n_data,), name="dec-x")
         conditions_in = tfkl.Input(shape=(self.n_conditions,), name="dec-conditions")
-        h = tfkl.Concatenate(name="dec-concatenate")([x_in, conditions_in])
+        h = tfkl.Concatenate(name="dec-concatenate")([z_in, conditions_in])
 
         names: List[str] = []
         for idx, units in enumerate(self.decoder_layers):
@@ -354,7 +348,7 @@ class Vae(tfk.Model):
             if self.dropout_rate > 0.0:
                 h = tfkl.Dropout(self.dropout_rate, name=f"{name}-drop")(h)
 
-        z_mu = tfkl.Dense(self.n_latent, name="dec-mu")(h)
+        x_mu = tfkl.Dense(self.n_latent, name="dec-mu")(h)
         if self.n_sort > 0:
             x_mu = SplitSortLayer(self.n_sort, name="dec-mu-sort-slice")(x_mu)
         
@@ -367,5 +361,5 @@ class Vae(tfk.Model):
         decoder = tfk.Model([z_in, conditions_in], [x_mu, x_logvar], name="decoder")
         set_initialization(decoder, names, self.init_kernel, self.init_bias)
 
-        self.logger.info(f"Decoder built: '{decoder.count_params()}' params")
+        self.logger.info(f"Decoder built: {decoder.count_params()} params")
         return decoder

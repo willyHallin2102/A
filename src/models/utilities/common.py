@@ -35,7 +35,7 @@ class SortLayer(tfkl.Layer):
         """
             Initialize sort-layer instance
         """
-        super().__init__(name="sort-layer", **kwargs)
+        super().__init__(**kwargs)
         if not isinstance(n_sort, int) or n_sort <= 0:
             raise ValueError("`n_sort` must be a positive integer")
         self.n_sort = n_sort
@@ -94,7 +94,7 @@ class SplitSortLayer(tfkl.Layer):
         """
             Initialize Split Sort Layer Instance
         """
-        super().__init__(name="split-sort-layer", **kwargs)
+        super().__init__(**kwargs)
 
         if not isinstance(n_sort, int) or n_sort <= 0:
             raise ValueError("`n_sort` is required as positive integer")

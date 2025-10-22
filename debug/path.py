@@ -112,6 +112,7 @@ def main():
     
 
     model = ChannelModel(level=loglevel, model_type=args.model_type)
+    model.path.build()
 
 
 if __name__ == "__main__":
