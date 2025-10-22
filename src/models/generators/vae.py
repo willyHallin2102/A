@@ -199,6 +199,54 @@ class Vae(tfk.Model):
         ]
 
 
+    # ---------------========== I/O ==========--------------- #
+
+    def save(self, directory: Path) -> None:
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=True)
+
+        self.save_weights(str(directory / WEIGHTS_FN))
+        config = {
+            "n_latent": self.n_latent,
+            "n_data": self.n_data,
+            "n_conditions": self.n_conditions,
+            "encoder_layers": self.encoder_layers,
+            "decoder_layers": self.decoder_layers,
+            "min_variance": self.min_variance,
+            "dropout_rate": self.dropout_rate,
+            "beta": float(self.beta.numpy()) if hasattr(self.beta, "numpy") else float(self.beta),
+            "beta_annealing_step": int(self.beta_annealing_step),
+            "kl_warmup_steps": int(self.kl_warmup_steps),
+            "init_kernel": self.init_kernel,
+            "init_bias": self.init_bias,
+            "n_sort": self.n_sort,
+            "loglevel": self.loglevel
+        }
+        (directory / CONFIG_FN).write_bytes(
+            orjson.dumps(config, option=orjson.OPT_INDENT_2)
+        )
+    
+
+    @classmethod
+    def load(cls, directory: Path) -> "Vae":
+        directory = Path(directory)
+        if not (directory / CONFIG_FN).exists():
+            raise FileNotFoundError(f"Missing config file: {CONFIG_FN}")
+        
+        # Load configurations with orjson
+        config = orjson.loads((directory / CONFIG_FN).read_bytes())
+        model = cls(**config)
+
+        # Build model variables (TF require dummy pass forward it seems)
+        # Try later to remove this if unnecessary
+        x0 = tf.zeros((1, config["n_data"]), dtype=tf.float32)
+        c0 = tf.zeros((1, config["n_conditions"]), dtype=tf.float32)
+        _ = model([x0, c0], training=False)
+
+        # Load the model weights
+        model.load_weights(str(directory / WEIGHTS_FN))        
+        return model
+
 
     # ---------------========== Forwarding ==========--------------- #
 

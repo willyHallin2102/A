@@ -120,6 +120,8 @@ def main():
         learning_rate=args.learning_rate
     )
 
+    model.path.save()
+
 
 if __name__ == "__main__":
     main()

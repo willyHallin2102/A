@@ -68,7 +68,53 @@ class PathModel:
         self.max_path_loss = float(max_path_loss)
 
         self._initialize_preprocessors()
-    
+
+
+    # ---------------========== I/O ==========--------------- #
+
+    def save(self):
+        """"""
+        if self.model is None:
+            raise ValueError("Model is not built, call `self.build()`.")
+        
+        self.model.save(self.directory)
+        payload = {
+            "path_loss_scaler"   : serialize_preproc(self.path_loss_scaler),
+            "condition_scaler"  : serialize_preproc(self.condition_scaler),
+            "rx_encoder"        : serialize_preproc(self.rx_encoder),
+            "delay_scaler"      : float(self.delay_scale),
+            "n_max_paths"       : int(self.n_max_paths),
+            "max_path_loss"      : float(self.max_path_loss),
+            "rx_types"          : list(self.rx_types)
+        }
+
+        with open(self.directory / PREPROC_FN, "wb") as fp:
+            pickle.dump(payload, fp, pickle.HIGHEST_PROTOCOL)
+
+
+    def load(self):
+        """"""
+        path = self.directory / PREPROC_FN
+        if not path.exists():
+            raise FileNotFoundError("The loaded model does not exist")
+        
+        with open(path, "rb") as fp:
+            params = pickle.load(fp)
+        
+        # Deserialize preprocessor
+        self.path_loss_scaler = deserialize_preproc(params["path_loss_scaler"])
+        self.condition_scaler = deserialize_preproc(params["condition_scaler"])
+        self.rx_encoder = deserialize_preproc(params["rx_encoder"])
+
+        # Other parameters
+        self.delay_scale = float(params.get("delay_scale", 1.0))
+        self.n_max_paths = int(params.get("n_max_paths", self.n_max_paths))
+        self.max_path_loss = float(params.get("max_path_loss", self.max_path_loss))
+        self.rx_types = list(params.get("rx_types", self.rx_types))
+
+        # Reload model
+        self.build()
+        self.model.load(self.directory)
 
     # ---------------========== Model Construction ==========--------------- #
 
