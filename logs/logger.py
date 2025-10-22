@@ -316,3 +316,13 @@ class Logger:
         cls._queue_listener = None
 
         logging.shutdown()
+
+
+def get_loglevel(loglevel: str) -> LogLevel:
+    loglevel = loglevel.lower()
+    if loglevel == "debug"      : return LogLevel.DEBUG
+    elif loglevel == "info"     : return LogLevel.INFO
+    elif loglevel == "warning"  : return LogLevel.WARNING
+    elif loglevel == "error"    : return LogLevel.ERROR
+    elif loglevel == "critical" : return LogLevel.CRITICAL
+    raise ValueError("Unrecognized loglevel!!")

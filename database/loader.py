@@ -48,7 +48,7 @@ class DataLoader:
         self.chunk_size = int(chunk_size)
 
         self.logger = Logger(
-            "DataLoader", level=level, json_format=True, use_console=use_console
+            "data-loader", level=level, json_format=True, use_console=use_console
         )
         self.processor = DataProcessor(self.logger)
     
