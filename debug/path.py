@@ -115,5 +115,11 @@ def main():
     model.path.build()
 
 
+    history = model.path.fit(
+        dtr=dtr, dts=dts, epochs=args.epochs, batch_size=args.batch_size,
+        learning_rate=args.learning_rate
+    )
+
+
 if __name__ == "__main__":
     main()

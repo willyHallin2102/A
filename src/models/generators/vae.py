@@ -1,6 +1,34 @@
 """
     src/models/generators/vae.py
     ----------------------------
+    This module implements a variational autoencoder (Vae) in 
+    TensorFlow/Keras. The Vae is a generative model that learns 
+    a latent representation of data, by a probabilistic 
+    encoding/decoding. It consists of:
+        
+        - **Encoder**:  Maps input data and conditioning variables 
+                        to a latent gaussian distribution 
+                        parameterized by mean (`µ`) and log-variance
+                        (`log(σ²)`).
+        - **Reparameterization-Layer**: Samples latent codes `z` using
+                                        the "_reparameterization trick_"
+                                        to enable gradient-based
+                                        optimization.
+        - **Decoder**:  Maps sampled latent codes (and conditions) back
+                        into reconstructed data, resemble input data to the
+                        encoder
+        - **Loss-Functions**:   Combines _Gaussian_ reconstruction loss and 
+                                KL-Divergence regularization, with optional
+                                β-weighting and annealing.
+    
+    Key Features within this Version of VAE:
+        - Customizable encoder/encoder depth and width
+        - KL-annealing and β-VAE support
+    
+    Used in this project as a core module in path modeling, particular used 
+    in learning data and reconstruct also generate new trajectories based on 
+    the conditions (environmental conditions) as well as the link state passed
+    by the link model.
 """
 from __future__ import annotations
 
@@ -34,58 +62,67 @@ class Reparametrize(tfkl.Layer):
     backpropagation.
     """
     def call(self, inputs: Tuple[tf.Tensor, tf.Tensor]) -> tf.Tensor:
-        """
-        Performs the reparametrization, to refactor the stochastic latent space
-        to a stochastic node factorization.
+        mu, logvar = inputs
+        eps = tf.random.normal(shape=tf.shape(mu), dtype=mu.dtype)
+        return mu + eps * tf.exp(0.5 * logvar)
+    
+    def get_config(self): return super().get_config()
+
+
+
+def reconstruction_loss(
+    x: tf.Tensor, mu: tf.Tensor, logvar: tf.Tensor
+) -> tf.Tensor:
+    """
+        Gaussian reconstruction loss with diagonal covariance included.
+        It computes the negative _log-likelihood_ of observed data 
+        under the _reconstructed Gaussian distribution:
+            
+            L_rec = 0.5 · Σ_j[ precision_j · (x_j - µ_j)² + log(σ²) ]
+        Averaged across the batch
+        Args:
+        -----
+            x:  Tensor of shape (`batch_size`, `n_features`), 
+                original data.
+            mu: Tensor of shape, reconstruction mean.
+            logvar: Tensor of same shape, reconstructed log-variance.
+        
+        Returns:
+        --------
+            Scalar tensor, mean reconstructed loss over the batch.
+    """
+    logvar = tf.clip_by_value(logvar, -10.0, 10.0)
+    precision = tf.exp(-logvar)
+
+    #   0.50 · Σ[ precision · (x - µ)² + log(σ) ]   -- average over batch
+    return tf.reduce_mean(0.5 * tf.reduce_sum(
+        precision * tf.square(x - mu) + logvar, axis=-1
+    ))
+
+
+def kl_divergence(mu: tf.Tensor, logvar: tf.Tensor, weights: tf.Tensor) -> tf.Tensor:
+    """
+        Computes **Kullback–Leibler divergence** between the approximate 
+        posterior q(z|x) ~ N(μ, σ²) and the prior p(z) ~ N(0, I).
+        Formula:
+            KL = -0.5 * Σ[1 + log(σ²) - μ² - σ²]
+        Weighted by warmup scheduler `weights`.
 
         Args:
         -----
-            inputs: Given mean `µ` and log variance `log(σ²)` of latent
-                    distributed.
+            mu: Latent mean tensor.
+            logvar: Latent log-variance tensor.
+            weights:    Scalar KL weight for warm-up (0–1).
+
         Returns:
         --------
-            Sampled latent variable tensor with the same shape
-            as the mean `µ`.
-        
-        Example:
-        --------
-            >>> reparam = Reparametrize()
-            >>> mu = tf.zeros((16, 8))
-            >>> logvar = tf.zeros_like(mu)
-            >>> z = reparam((mu, logvar))
-            >>> z.shape
-            TensorShape([16, 8])
-        """
-        mu, logvar = inputs
-        eps = tf.random.normal(shape=tf.shape(mu), dtype=mu.dtype)
-        return mu + eps * tf.eps(0.5 * logvar)
-
-
-
-def reconstruction_loss(x: tf.Tensor, mu: tf.Tensor, logvar: tf.Tensor) -> tf.Tensor:
-    """
-    Gaussian reconstruction loss with diagonal covariance measured. It computes 
-    the negative `log-likelihood` of observed data under the reconstructed
-    gaussian distribution.
-        L_rec = 0.5 · Σ_j[ precision_j · (x_j - µ_j)² + log(σ²) ]
-    Average across the batch
-    
-    Args:
-    -----
-        x:  Tensor of shape (`batch_size`, `n_features`), original data.
-        mu: Tensor of shape, reconstruction mean.
-        logvar: Tensor of same shape, reconstructed log-variance.
-    
-    Returns:
-    --------
-        Scalar tensor, mean reconstructed loss over a given batch.
+            Scalar mean KL divergence.
     """
     logvar = tf.clip_by_value(logvar, -10.0, 10.0)
     kl = -0.5 * tf.reduce_sum(
         1.0 + logvar - tf.square(mu) - tf.exp(logvar), axis=-1
     )
     return tf.reduce_mean(weights * kl)
-
 
 
 # ------------------------------------------------------- #
@@ -243,7 +280,7 @@ class Vae(tfk.Model):
             lambda: tf.print(
                 "Step", tf.cast(self.current_step, tf.int32),
                 " | β = ", tf.round(self.beta * 1000) / 1000
-            ), lambda: tf.np_op()
+            ), lambda: tf.no_op()
         )
     
 
@@ -256,6 +293,7 @@ class Vae(tfk.Model):
         --------
             Scalar within range [0, 1] controlling KL scaling.
         """
+        return tf.minimum(1.0, self.current_step / self.kl_warmup_steps)
     
 
     # ---------------========== Training/Testing ==========--------------- #
@@ -263,7 +301,7 @@ class Vae(tfk.Model):
     def train_step(self, inputs):
         """
         """
-        with logger.time_block("train_step duration"):
+        with self.logger.time_block("time"):
             x, cond = extract_inputs(inputs)
             self._update_schedulers()
             kl_weight = self._kl_weight()
@@ -287,7 +325,7 @@ class Vae(tfk.Model):
     def test_step(self, inputs):
         """
         """
-        with self.logger.time_block("test_step duration"):
+        with self.logger.time_block("val time"):
             x, cond = extract_inputs(inputs)
             kl_weight = self._kl_weight()
             x_mu, x_logvar, z_mu, z_logvar = self([x, cond], training=False)
@@ -302,18 +340,17 @@ class Vae(tfk.Model):
     # ---------------========== Encoder/Decoder ==========--------------- #
 
     def _build_encoder(self) -> tfk.Model:
-        """
-        """
-        self.logger.debug(f"Building encoder with layers={self.encoder_layers}")
-        x_in = tfkl.Input(shape=(self.n_data,), name="enc-x")
-        conditions_in = tfkl.Input(shape=(self.n_conditions,), name="x-conditions")
-        h = tfkl.Concatenate(name="enc-concatenate")([x_in, conditions_in])
+        """"""
+        self.logger.debug(f"Building encoder with layers = {self.encoder_layers}")
+        x_in = tfkl.Input(shape=(self.n_data,), name='enc-x')
+        conditions_in = tfkl.Input(shape=(self.n_conditions,), name="enc-cond")
+        h = tfkl.Concatenate(name='enc-concat')([x_in, conditions_in])
 
         names: List[str] = []
         for idx, units in enumerate(self.encoder_layers):
             name = f"enc-hidden-{idx}"
             names.append(name)
-            h = tfkl.Dense(units, activation="swish", name=name)(h)
+            h = tfkl.Dense(units, activation='swish', name=name)(h)
             h = tfkl.BatchNormalization(name=f"{name}-batch")(h)
             if self.dropout_rate > 0.0:
                 h = tfkl.Dropout(self.dropout_rate, name=f"{name}-drop")(h)
@@ -323,32 +360,29 @@ class Vae(tfk.Model):
         encoder = tfk.Model(
             [x_in, conditions_in], [z_mu, z_logvar], name="encoder"
         )
-        
         set_initialization(encoder, names, self.init_kernel, self.init_bias)
-        self.logger.info(f"Encoder built: {encoder.count_params()} params")
-
-        return encoder
+        
+        self.logger.info(f"Encoder built: {encoder.count_params()} params.")
+        return encoder 
     
 
     def _build_decoder(self) -> tfk.Model:
-        """
-        """
-        self.logger.debug(f"Building encoder with layers = '{self.decoder_layers}'")
-        z_in = tfkl.Input(shape=(self.n_data,), name="dec-x")
-        conditions_in = tfkl.Input(shape=(self.n_conditions,), name="dec-conditions")
-        h = tfkl.Concatenate(name="dec-concatenate")([z_in, conditions_in])
+        """"""
+        self.logger.debug(f"Building decoder with layers={self.decoder_layers}")
+        z_in = tfkl.Input(shape=(self.n_latent,), name="dec-z")
+        conditions_in = tfkl.Input(shape=(self.n_conditions,), name="dec-cond")
+        h = tfkl.Concatenate(name="dec-concat")([z_in, conditions_in])
 
         names: List[str] = []
         for idx, units in enumerate(self.decoder_layers):
             name = f"dec-hidden-{idx}"
             names.append(name)
-            
-            h = tfkl.Dense(units, activation="swish", name=name)(h)
+            h = tfkl.Dense(units, activation='tanh', name=name)(h)
             h = tfkl.BatchNormalization(name=f"{name}-batch")(h)
             if self.dropout_rate > 0.0:
                 h = tfkl.Dropout(self.dropout_rate, name=f"{name}-drop")(h)
-
-        x_mu = tfkl.Dense(self.n_latent, name="dec-mu")(h)
+            
+        x_mu = tfkl.Dense(self.n_data, name="dec-mu")(h)
         if self.n_sort > 0:
             x_mu = SplitSortLayer(self.n_sort, name="dec-mu-sort-slice")(x_mu)
         
@@ -360,6 +394,6 @@ class Vae(tfk.Model):
 
         decoder = tfk.Model([z_in, conditions_in], [x_mu, x_logvar], name="decoder")
         set_initialization(decoder, names, self.init_kernel, self.init_bias)
-
-        self.logger.info(f"Decoder built: {decoder.count_params()} params")
+        
+        self.logger.info(f"Decoder built: {decoder.count_params()} params.")
         return decoder
