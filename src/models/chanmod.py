@@ -10,6 +10,7 @@ from typing import Union
 
 from src.config.data import DataConfig
 from src.models.link import LinkStatePredictor
+from src.models.path import PathModel
 
 from logs.logger import LogLevel
 
@@ -34,6 +35,13 @@ class ChannelModel:
             directory=self.directory/"link", rx_types=config.rx_types, 
             n_unit_links=config.n_unit_links, dropout_rate=config.dropout_rate,
             add_zero_los_frac=config.add_zero_los_frac, level=level
+        )
+
+        self.path = PathModel(
+            directory=self.directory/model_type.lower(), 
+            model_type=model_type, rx_types=config.rx_types, 
+            n_max_paths=config.n_max_paths, max_path_loss=config.max_path_loss,
+            loglevel=level
         )
     
 

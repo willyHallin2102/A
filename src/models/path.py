@@ -60,7 +60,7 @@ class PathModel:
 
         # Hyperparameters for the path-model
         self.model_type = model_type.lower()
-        self.config.get_config(self.model_type)
+        self.config = get_config(self.model_type)
         self.model: tfk.Model = None # Leave Null on construction.
 
         self.rx_types = list(rx_types)

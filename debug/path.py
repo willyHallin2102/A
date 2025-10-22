@@ -109,7 +109,9 @@ def main():
     dtr, dts = shuffle_and_split(
         data=data, val_ratio=args.ratio, seed=args.seed
     )
-    print(dtr)
+    
+
+    model = ChannelModel(level=loglevel, model_type=args.model_type)
 
 
 if __name__ == "__main__":
