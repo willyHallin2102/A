@@ -27,6 +27,7 @@ from src.models.utilities.preproc import serialize_preproc, deserialize_preproc
 from src.config.const import PREPROC_FN
 
 
+
 class PathModel:
     """
     A model for learning and generating wireless multipath characteristics such as
