@@ -101,9 +101,49 @@ def param_to_preproc(cls: Any, param: Dict[str, Any]) -> Preproc:
     raise TypeError(f"Unsupported preprocessor class: {cls.__name__}")
 
 
-@param_to_preproc.register
-def _(cls: type(StandardScaler), param: Dict[str, Any]) -> StandardScaler:
-    """ Serialize a fitted `StandardScaler` into a dictionary. """
+# @param_to_preproc.register
+# def _(cls: type(StandardScaler), param: Dict[str, Any]) -> StandardScaler:
+#     """ Serialize a fitted `StandardScaler` into a dictionary. """
+#     proc = StandardScaler()
+#     proc.mean_ = np.array(param["mean"])
+#     proc.scale_ = np.array(param["scale"])
+#     proc.var_ = np.array(param.get("var", np.square(proc.scale_)))
+#     proc.n_samples_seen_ = param.get("n_samples_seen")
+#     proc.n_features_in_ = proc.mean_.shape[0]
+#     return proc
+
+
+# @param_to_preproc.register
+# def _(cls: type(OneHotEncoder), param: Dict[str, Any]) -> OneHotEncoder:
+#     """ Serialize a fitted `OneHotEncoder` into a dictionary. """
+#     proc = OneHotEncoder(
+#         categories=[np.array(category) for category in param["categories"]],
+#         handle_unknown=param.get("handle_unknown", "ignore"),
+#         drop=param.get("drop"),
+#         sparse_output=param.get("sparse_output", False),
+#         min_frequency=param.get("min_frequency"),
+#         max_categories=param.get("max_categories"),
+#     )
+#     # Pretend fitted
+#     proc.categories_ = [np.array(category) for category in param["categories"]]
+#     proc.n_features_in_ = len(proc.categories_)
+#     return proc
+
+
+# @param_to_preproc.register
+# def _(cls: type(MinMaxScaler), param: Dict[str, Any]) -> MinMaxScaler:
+#     """ Serialize a fitted `MinMaxScaler` into a dictionary. """
+#     proc = MinMaxScaler(feature_range=param.get("feature_range", (0, 1)))
+#     proc.data_min_ = np.array(param["data_min"])
+#     proc.data_max_ = np.array(param["data_max"])
+#     proc.data_range_ = np.array(param["data_range"])
+#     proc.scale_ = np.array(param["scale"])
+#     proc.min_ = np.array(param["min"])
+#     proc.n_features_in_ = proc.data_min_.shape[0]
+#     return proc
+
+@param_to_preproc.register(StandardScaler)
+def _(cls, param: Dict[str, Any]) -> StandardScaler:
     proc = StandardScaler()
     proc.mean_ = np.array(param["mean"])
     proc.scale_ = np.array(param["scale"])
@@ -113,9 +153,8 @@ def _(cls: type(StandardScaler), param: Dict[str, Any]) -> StandardScaler:
     return proc
 
 
-@param_to_preproc.register
-def _(cls: type(OneHotEncoder), param: Dict[str, Any]) -> OneHotEncoder:
-    """ Serialize a fitted `OneHotEncoder` into a dictionary. """
+@param_to_preproc.register(OneHotEncoder)
+def _(cls, param: Dict[str, Any]) -> OneHotEncoder:
     proc = OneHotEncoder(
         categories=[np.array(category) for category in param["categories"]],
         handle_unknown=param.get("handle_unknown", "ignore"),
@@ -124,15 +163,13 @@ def _(cls: type(OneHotEncoder), param: Dict[str, Any]) -> OneHotEncoder:
         min_frequency=param.get("min_frequency"),
         max_categories=param.get("max_categories"),
     )
-    # Pretend fitted
     proc.categories_ = [np.array(category) for category in param["categories"]]
     proc.n_features_in_ = len(proc.categories_)
     return proc
 
 
-@param_to_preproc.register
-def _(cls: type(MinMaxScaler), param: Dict[str, Any]) -> MinMaxScaler:
-    """ Serialize a fitted `MinMaxScaler` into a dictionary. """
+@param_to_preproc.register(MinMaxScaler)
+def _(cls, param: Dict[str, Any]) -> MinMaxScaler:
     proc = MinMaxScaler(feature_range=param.get("feature_range", (0, 1)))
     proc.data_min_ = np.array(param["data_min"])
     proc.data_max_ = np.array(param["data_max"])
@@ -141,6 +178,7 @@ def _(cls: type(MinMaxScaler), param: Dict[str, Any]) -> MinMaxScaler:
     proc.min_ = np.array(param["min"])
     proc.n_features_in_ = proc.data_min_.shape[0]
     return proc
+
 
 
 # ---------- Public API ---------- #
@@ -191,4 +229,4 @@ def deserialize_preproc(data: Dict[str, Any]) -> Preproc:
     cls = cls_map.get(data["type"])
     if cls is None:
         raise ValueError(f"Unknown preprocessor type: {data['type']}")
-    return param_to_preproc(cls, data["params"])
+    return param_to_preproc(cls(), data["params"])

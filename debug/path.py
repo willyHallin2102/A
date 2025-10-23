@@ -78,6 +78,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def check_existing_model(directory: Path) -> bool:
+    return (directory / PREPROC_FN).exists()
+
+
+def prompt_user() -> bool:
+    while True:
+        response = input("Model already exists. Overwrite? [y/N]").strip().lower()
+        if response in ['y', 'yes']: return True
+        elif response in ['n', 'no', '']: return False
+        else: print("Please answer 'y' for yes or 'n' for no.")
+
 
 def get_data_files(city_arg: str) -> list[Path]:
     """
@@ -112,7 +123,24 @@ def main():
     
 
     model = ChannelModel(level=loglevel, model_type=args.model_type)
-    model.path.build()
+    # model.path.build()
+
+    model_exists = check_existing_model(model.path.directory)
+    load_existing = False
+    if model_exists and not args.force_overwrite:
+        if prompt_user():
+            print("Loading existing model...")
+            model.path.build()
+        else:
+            print("Overriding existing model...")
+            model.path.load()
+            load_existing = True
+    elif model_exists and args.force_overwrite:
+        print("Force overwrite enabled. Overwriting existing model...")
+        model.path.build()
+    else:
+        print("No existing model found. Building new model...")
+        model.path.build()
 
 
     history = model.path.fit(
