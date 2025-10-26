@@ -103,7 +103,7 @@ class SplitSortLayer(tfkl.Layer):
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         """
-        Forward pass: sorts the first `n_sort` elements descendingly.
+        Forward pass: sorts the first `n_sort` elements decreasingly.
 
         Args:
         -----
@@ -172,7 +172,7 @@ def extract_inputs(
     
     elif isinstance(inputs, dict):
         if "x" not in inputs or "cond" not in inputs:
-            raise ValueError("Dictionary is requred to contain `x` and `cond`")
+            raise ValueError("Dictionary is required to contain `x` and `cond`")
         x = tf.convert_to_tensor(inputs["x"], dtype=tf.float32)
         cond = tf.convert_to_tensor(inputs["cond"], dtype=tf.float32)
         return x, cond
