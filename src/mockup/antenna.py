@@ -46,8 +46,8 @@ def plot_pattern(
     
     Returns:
     --------
-        phi:  (nphi,) Array of azimuth angles of the plot
-        theta:  (ntheta,) Array of elevation angles of the plot            
+        phi:  (n_phi,) Array of azimuth angles of the plot
+        theta:  (n_theta,) Array of elevation angles of the plot            
         val:  array of values of the pattern 
         ax:  Image axes 
     """
