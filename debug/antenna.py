@@ -32,14 +32,14 @@ def test_isotropic_basic():
 
 
 def test_3gpp_basic():
-    print("→ Testing Element3GPP basic behavior...")
+    print("Testing Element3GPP basic behaviour...")
     el = Element3GPP()
     phi = np.linspace(-180, 180, 361)
     theta = np.linspace(-90, 90, 181)
     phi_mat, theta_mat = np.meshgrid(phi, theta, indexing='xy')
     g = el.response(phi_mat, theta_mat)
     assert np.isfinite(g).all(), "3GPP response returned NaN/Inf values!"
-    print("✓ Passed 3GPP finite output test.")
+    print("Passed 3GPP finite output test.")
 
 
 def test_plot_modes(show_plot=True):
