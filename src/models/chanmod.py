@@ -20,7 +20,7 @@ class ChannelModel:
     def __init__(self,
         config: DataConfig=DataConfig(), model_type: str="vae", 
         directory: Union[str, Path]="beijing", seed: int=42,
-        level: LogLevel=LogLevel.INFO
+        loglevel: LogLevel=LogLevel.INFO
     ):
         """ Initialize Channel Model Instance """
         # Create the directory root for the model
@@ -34,15 +34,19 @@ class ChannelModel:
         self.link = LinkStatePredictor(
             directory=self.directory/"link", rx_types=config.rx_types, 
             n_unit_links=config.n_unit_links, dropout_rate=config.dropout_rate,
-            add_zero_los_frac=config.add_zero_los_frac, level=level
+            add_zero_los_frac=config.add_zero_los_frac, level=loglevel
         )
 
         self.path = PathModel(
             directory=self.directory/model_type.lower(), 
             model_type=model_type, rx_types=config.rx_types, 
             n_max_paths=config.n_max_paths, max_path_loss=config.max_path_loss,
-            loglevel=level
+            loglevel=loglevel
         )
+
+    def load(self):
+        self.link.load()
+        self.path.load()
     
 
 

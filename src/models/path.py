@@ -70,7 +70,6 @@ class PathModel:
 
         self._initialize_preprocessors()
 
-
     # ---------------========== I/O ==========--------------- #
 
     def save(self):

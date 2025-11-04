@@ -25,7 +25,7 @@
         - Customizable encoder/encoder depth and width
         - KL-annealing and β-VAE support
     
-    Used in this project as a core module in path modeling, particular used 
+    Used in this project as a core module in path modelling, particular used 
     in learning data and reconstruct also generate new trajectories based on 
     the conditions (environmental conditions) as well as the link state passed
     by the link model.
@@ -44,6 +44,7 @@ from src.models.utilities.common import (
     extract_inputs, set_initialization,
     SplitSortLayer
 )
+from src.models.generators.genai import GenAi
 
 from src.models.utilities.preproc import serialize_preproc, deserialize_preproc
 from src.config.const import PREPROC_FN, WEIGHTS_FN, CONFIG_FN
@@ -129,7 +130,7 @@ def kl_divergence(mu: tf.Tensor, logvar: tf.Tensor, weights: tf.Tensor) -> tf.Te
 # ---------------========== VAE ==========--------------- #
 # ------------------------------------------------------- #
 
-class Vae(tfk.Model):
+class Vae(GenAi):
     """
     Variational Auto Encoder (VAE) implementation with a β-annealing, KL warmup,
     and conditional input parameters.
@@ -147,7 +148,7 @@ class Vae(tfk.Model):
     ):
         """ Initialize Variational AutoEncoder Instance """
         # Calling parent `tfk.Model`
-        super().__init__(name="vae", **kwargs)
+        super().__init__(name="vae")
         
         # Setting up the logger
         self.loglevel = level
@@ -277,6 +278,13 @@ class Vae(tfk.Model):
 
         return x_mu, x_logvar, z_mu, z_logvar
     
+
+    def sample(self, conditions: tf.Tensor, n_samples: int=1) -> tf.Tensor:
+        """
+        """
+        n_samples = conditions.shape[0] if n_samples is None else n_samples
+        z = tf.random.normal(shape=(n_samples, self.n_latent))
+        return self.decoder([z, conditions], training=False)
 
     # ---------------========== Internal Metrics ==========--------------- #
 
